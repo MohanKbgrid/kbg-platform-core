@@ -92,3 +92,33 @@ assert_control_controls(
 `0.x` while the canon's first three consumers (Vijay, Aurafab, Solomon) shake it out. Breaking
 changes are expected and will be listed in each surface's divergence register, not hidden behind a
 compatibility shim.
+
+## Consuming it from another project — today
+
+Both packages live in the `vijay-dairy` repo for now. They are **installable from there without
+waiting for a repo split**:
+
+```bash
+pip install "git+https://github.com/MohanKbgrid/vijay-dairy.git#subdirectory=packages/kbg-platform-core"
+```
+
+```bash
+npm install "git+https://github.com/MohanKbgrid/vijay-dairy.git#main" --prefix-path packages/kbg-ui-kit
+# or, until the split, vendor the packed tarball:  npm pack  →  npm install ./kbg-ui-kit-0.1.0.tgz
+```
+
+⬜ **Remaining: move both to their own repos** (`MohanKbgrid/kbg-platform-core`,
+`MohanKbgrid/kbg-ui-kit`). A client's repo is the wrong distribution point for a global asset —
+Aurafab should not be pulling a dependency out of a dairy codebase. Nothing else has to change when
+that happens: both are self-contained directories with their own build, gate, and consumability
+check.
+
+## Verify before you depend on it
+
+```bash
+python test_core.py            # 47 doctrine checks, every one a NEGATIVE case
+python verify_consumable.py    # builds, installs, imports from the INSTALL not from ./src
+```
+
+The second one is not ceremony. The sibling npm package passed its typecheck and its unit gate
+while being **impossible for any consumer to import** — nothing inside a package can catch that.

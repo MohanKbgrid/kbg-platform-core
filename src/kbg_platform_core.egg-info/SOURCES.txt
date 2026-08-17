@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/kbg_platform_core/__init__.py
+src/kbg_platform_core/authority.py
+src/kbg_platform_core/idem.py
+src/kbg_platform_core/outbox.py
+src/kbg_platform_core/result.py
+src/kbg_platform_core/testkit.py
+src/kbg_platform_core/versioned.py
+src/kbg_platform_core.egg-info/PKG-INFO
+src/kbg_platform_core.egg-info/SOURCES.txt
+src/kbg_platform_core.egg-info/dependency_links.txt
+src/kbg_platform_core.egg-info/top_level.txt
