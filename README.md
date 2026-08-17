@@ -28,78 +28,48 @@ trust" code the thesis warns about.
 **No third-party runtime dependencies.** Pure standard library, so it drops into any Python project
 regardless of ORM, web framework, or database driver. Adapters are *callables you pass in*.
 
-## Install
+## How to use this: **VENDOR it, do not depend on it**
+
+Copy `src/kbg_platform_core/` into your project — e.g. `app/vendor/kbg_platform_core/` — and
+**own it from there.** Record the commit you copied from in a `_VENDOR.md` beside it.
 
 ```bash
-pip install -e packages/kbg-platform-core
+git clone https://github.com/MohanKbgrid/kbg-platform-core /tmp/kbg-base
+cp -r /tmp/kbg-base/src/kbg_platform_core  <your-project>/app/vendor/
+git -C /tmp/kbg-base rev-parse HEAD        # ← record this as the base commit
 ```
 
-## Use
+There is deliberately **no pip install instruction.** This is a base, not a dependency.
 
-```python
-from kbg_platform_core import Resolved, Gap, Authority, Decision, VersionedWriter, Outbox, Mode
+### Why
 
-# D4 — absence is not None, it is a Gap you must handle
-price = resolve_price(product)              # -> Resolved | Gap
-if price.is_gap:
-    return {"blocked": True, "reason": price.reason, "code": price.code}
-amount = price.value                        # .value on a Gap raises, by design
-```
+A shared dependency that spans unrelated products becomes either a
+lowest-common-denominator that fits none of them, or a "shared" package with per-project branches
+inside it — which is worse than two honest copies. Accounting makes it concrete: one product's
+control accounts and dimensions come from a dairy finance function, another's from a hospital.
+Those are different objects, and no abstraction usefully covers both.
 
-```python
-# D1 — one function answers "may I", and the UI and the API both call it
-class MyAuthority(Authority):
-    def _evaluate(self, actor, action, obj):
-        if action not in self.granted(actor):
-            return Decision.deny("not granted to this role",
-                                 who_can="Plant Manager")
-        return Decision.allow()
+Vendoring buys something a dependency cannot: **one product can never break another.** Not
+"unlikely" — structurally impossible. No version negotiation, no upgrade ritual, no pinning
+discipline, and an agent working in that repo can read the whole thing without fetching anything.
 
-auth = MyAuthority()
-d = auth.check(actor, "order.correct", order)
-# UI:  {"enabled": d.allowed, "reason": d.reason, "whoCan": d.who_can}
-# API: if not d.allowed: raise HTTPException(403, d.reason)
-```
+### The cost, stated plainly
 
-```python
-# Integration §10 — the gate, provable three ways
-box = Outbox(mode=Mode.UAT, store=my_store)
-row = box.enqueue(topic="erp.invoice.push.v1", source_key=invoice_id, payload=payload)
-assert row.state is State.HELD                 # not sent, not faked, inspectable
-assert row.held_reason.startswith("integration_mode=uat")
-```
+**A bug fixed in one project stays live in the others.** That is real, and the mitigation is not
+to re-couple the code:
 
-## Testing your adoption
+> **Propagate the GATE, not the implementation.**
 
-`testkit` carries the two assertions the canon insists on:
+When a bug reveals a missing *rule*, the rule goes into the canon's surface spec and its gate-test
+list. Every project then inherits the *test* while keeping its own code. The rule that proves the
+point is in `outbox.decide()`: **a HELD row must not consume a retry attempt.** That was learned by
+reading a live dispatcher, not by designing this base. A project that copied before it was
+understood would dead-letter good events through its entire UAT period and discover it only when
+production went quiet.
 
-```python
-from kbg_platform_core.testkit import require_fixture_db, assert_control_controls
+So: copy freely, change freely, and when you learn something the base got wrong, fix the **spec and
+its gate** — then optionally send the code change back here for the next project's starting point.
 
-require_fixture_db(current_db_name(), allowed={"myapp_dev", "myapp_test"})
-
-assert_control_controls(
-    describe="off-location threshold",
-    run=lambda: derive_flags(visit),           # returns the observed output
-    change=lambda: set_threshold(2000),        # config-only change
-    restore=lambda: set_threshold(200),
-)
-# fails if the output did NOT change -> the threshold is hardcoded somewhere
-```
-
-## Versioning
-
-`0.x` while its first consumers shake it out. Breaking
-changes are expected and will be listed in each surface's divergence register, not hidden behind a
-compatibility shim.
-
-## Install
-
-```bash
-pip install "git+https://github.com/MohanKbgrid/kbg-platform-core.git@main"
-```
-
-Pin a tag once this reaches 1.0; `main` is the moving target until then.
 
 ## Verify before you depend on it
 
