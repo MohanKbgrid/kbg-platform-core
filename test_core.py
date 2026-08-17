@@ -13,6 +13,7 @@ import uuid
 
 sys.path.insert(0, "src")
 
+from kbg_platform_core.outbox import RetryPolicy, decide
 from kbg_platform_core import (Authority, Decision, Gap, GapError, Mode, Outbox, OutboxRow,
                                PermissionDenied, Resolved, State, VersionedRecord,
                                VersionedWriter, capture_id, gaps)
@@ -144,6 +145,36 @@ check("production queues rather than holds",
       prod.enqueue(topic="t", source_key="k", payload={}).state, State.QUEUED)
 check_raises("marking a failure with no error is refused (no swallowed errors)",
              ValueError, lambda: uat.mark_failed(row, ""))
+
+
+# ── the outbox STATE MACHINE — the rules a drain loop gets wrong ──────────────────────────
+print("\n[outbox] the state machine, incl. the rule that is easy to get wrong")
+d = decide(result={"ok": True}, attempts=0)
+check("an accepted push confirms", (d.state.value, d.counts_as), ("confirmed", "dispatched"))
+d = decide(result={"ok": False}, attempts=0)
+check("a failure stays retryable", (d.state.value, d.counts_as), ("failed", "failed"))
+check("...and consumes an attempt", d.increment_attempts, True)
+d = decide(result={"ok": False}, attempts=4)
+check("the 5th failure dead-letters", (d.state.value, d.counts_as), ("dead_letter", "dead_letter"))
+d = decide(result={"ok": False}, attempts=1, policy=RetryPolicy(max_attempts=2))
+check("max_attempts is POLICY, not a constant", d.state.value, "dead_letter")
+
+# ⛔ The rule this function exists for.
+h = decide(result={"held": True, "held_reason": "uat"}, attempts=3)
+check("HELD does NOT consume an attempt", h.increment_attempts, False)
+check("...and stays QUEUED, so the same loop re-drives it when the gate opens",
+      h.state.value, "queued")
+check("...and is counted as its own outcome, not as failed", h.counts_as, "held")
+check("...and its response is still recorded — never a silent outcome", h.record_response, True)
+check("held near the retry ceiling STILL does not dead-letter",
+      decide(result={"held": True}, attempts=99).state.value, "queued")
+print("      ^ if holding consumed a retry, a long UAT period would dead-letter good events")
+print("        purely because time passed, discovered only after the switch flipped.")
+
+box_uat = Outbox(Mode.UAT, MemStore())
+hr = box_uat.held_result()
+check("held_result feeds decide() directly", decide(result=hr, attempts=0).counts_as, "held")
+check("...and names the mode for the reader", hr["mode"], "uat")
 
 
 # ── D2: supersede, never update ────────────────────────────────────────────────────────────
