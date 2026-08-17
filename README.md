@@ -1,6 +1,6 @@
 # kbg-platform-core
 
-The small, **domain-free** primitives that enforce the [KBG Platform Surfaces canon](../../docs/canon/README.md)'s
+The small, **domain-free** primitives that enforce the KBG Platform Surfaces canon's
 doctrines. Artifact 2 of the canon.
 
 ## What this is — and deliberately is not
@@ -89,29 +89,17 @@ assert_control_controls(
 
 ## Versioning
 
-`0.x` while the canon's first three consumers (Vijay, Aurafab, Solomon) shake it out. Breaking
+`0.x` while its first consumers shake it out. Breaking
 changes are expected and will be listed in each surface's divergence register, not hidden behind a
 compatibility shim.
 
-## Consuming it from another project — today
-
-Both packages live in the `vijay-dairy` repo for now. They are **installable from there without
-waiting for a repo split**:
+## Install
 
 ```bash
-pip install "git+https://github.com/MohanKbgrid/vijay-dairy.git#subdirectory=packages/kbg-platform-core"
+pip install "git+https://github.com/MohanKbgrid/kbg-platform-core.git@main"
 ```
 
-```bash
-npm install "git+https://github.com/MohanKbgrid/vijay-dairy.git#main" --prefix-path packages/kbg-ui-kit
-# or, until the split, vendor the packed tarball:  npm pack  →  npm install ./kbg-ui-kit-0.1.0.tgz
-```
-
-⬜ **Remaining: move both to their own repos** (`MohanKbgrid/kbg-platform-core`,
-`MohanKbgrid/kbg-ui-kit`). A client's repo is the wrong distribution point for a global asset —
-Aurafab should not be pulling a dependency out of a dairy codebase. Nothing else has to change when
-that happens: both are self-contained directories with their own build, gate, and consumability
-check.
+Pin a tag once this reaches 1.0; `main` is the moving target until then.
 
 ## Verify before you depend on it
 
@@ -120,5 +108,5 @@ python test_core.py            # 47 doctrine checks, every one a NEGATIVE case
 python verify_consumable.py    # builds, installs, imports from the INSTALL not from ./src
 ```
 
-The second one is not ceremony. The sibling npm package passed its typecheck and its unit gate
+The second one is not ceremony. The sibling UI package passed its typecheck and its unit gate
 while being **impossible for any consumer to import** — nothing inside a package can catch that.

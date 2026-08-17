@@ -3,7 +3,7 @@ import it with `src/` NOT on the path.
 
 Running the unit gate from the package root proves the CODE works. It does not prove the package
 is installable — a wrong `packages.find` root, a missing `__init__`, or a module left out of the
-distribution all pass the unit gate and fail every consumer. The sibling npm package failed
+distribution all pass the unit gate and fail every consumer. The sibling UI package failed
 exactly that way in this same build: it type-checked, it unit-tested, and no consumer could
 import it.
 
@@ -69,8 +69,9 @@ print(json.dumps(out))
     t("importing from the installed copy succeeds", r2.returncode == 0, r2.stderr.strip()[:70])
     if r2.returncode == 0:
         info = json.loads(r2.stdout.strip())
+        here = str(Path(__file__).resolve().parent).replace("\\", "/")
         t("...and it resolved to the INSTALL, not to ./src",
-          "vijay_dairy" not in info["file"].replace("\\", "/"), info["file"][-52:])
+          here not in info["file"].replace("\\", "/"), info["file"][-52:])
         t("version is exposed", info["version"] == "0.1.0", info["version"])
         t("every public symbol is importable", info["exports"] == 20, str(info["exports"]))
         t("D4 survives packaging: Gap.value still raises", info["gap_raises"])
